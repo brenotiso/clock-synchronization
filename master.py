@@ -5,8 +5,9 @@ import time
 import statistics
 
 
-SLAVES = ['192.168.0.1']  # adicionar os IPs dos slaves
-INITIAL_PORT = 7100
+
+SLAVES = ['127.0.0.1']  # adicionar os IPs dos slaves
+INITIAL_PORT = 7101
 
 ports = []
 times = []
@@ -24,10 +25,12 @@ class GetTime(threading.Thread):
     def run(self):
         try:
             request_time = time.time()
-            sock_udp.sendto(ports[self.i].encode(), (SLAVES[self.i], 7000))
-            response = sock_udp.recvfrom(1024).decode()
+            sock_udp.sendto("ola".encode(), (SLAVES[0], 7101))
+            response = sock_udp.recvfrom(1024)  
             response_time = time.time()
-            times[self.i] = response + ((response_time - request_time) / 2)
+            times[self.i] = float(response[0].decode()) + ((response_time - request_time) / 2)
+            
+            
         except socket.timeout:
             print('Time out {}'.format(SLAVES[self.i]))
 
@@ -39,7 +42,7 @@ class SendTime(threading.Thread):
 
     def run(self):
         adjust_time = mean_time - times[self.i]
-        sock_udp.sendto(str(adjust_time).encode(), (SLAVES[self.i], 7000))
+        sock_udp.sendto(str(adjust_time).encode(), (SLAVES[self.i], 7101))
 
 for index, slave in enumerate(SLAVES):
     port = str(INITIAL_PORT + index)
@@ -69,6 +72,7 @@ for index, slave in enumerate(SLAVES):
     SendTime(index).start()
 
 local_clock.adjustClock(mean_time - local_time)
-
+print(local_clock.getClock())
+print(local_clock.getDate())
 # print('')
 # print(local_time)

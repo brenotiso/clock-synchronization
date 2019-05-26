@@ -14,6 +14,9 @@ class Clock:
 
     def adjustClock(self, a):
         self._error += a
+        
+    def getError(self):
+        return self._error
 
     def getDate(self):
         current_milli_time_error = self._current_milli_time() + self._error
