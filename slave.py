@@ -5,23 +5,28 @@ import math
 
 
 r = Clock()
-
-udp_ip = "127.0.0.1"
+udp_ip = ""
 udp_port = 7101
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-
 sock.bind((udp_ip, udp_port))
-mensage, addr = sock.recvfrom(1024) # Tamanho do buffer eh 1024 bytes
-print ("Mensagem recebida:", mensage)
-sock.sendto((str(r.getClock())).encode() , addr)
-mensage, addr = sock.recvfrom(1024)
-print("Ajustar em: ", mensage)
-print("Erro é : ", r.getError())
-print(r.getClock())
-print(r.getDate())
 
-r.adjustClock(int(math.trunc(float(mensage.decode()))))
-print(r.getClock())
-print(r.getDate())
-
-
+while True:
+    # Recebe a porta que o slave enviará seu clock
+    mensage, addr = sock.recvfrom(1024)
+    print ("Mensagem recebida:", mensage.decode())
+    port = int(mensage.decode())
+    # Envia o clock para o master
+    sock.sendto((str(r.getClock())).encode(), (addr[0], port))
+    # Recebe a quantidade que deve ser ajustada
+    mensage, addr = sock.recvfrom(1024)
+    # Imprime os valores antes do ajuste
+    print(r.getClock())
+    print(r.getDate())
+    # Ajusta o clock de acordo com o valor passado
+    print("Ajustar em: ", mensage)
+    r.adjustClock(int(mensage.decode()))
+    # Imprime os valores após os ajustes
+    print(r.getClock())
+    print(r.getDate())
+    # Envia sua "Data" para o master printar e comparar os resultados
+    sock.sendto(r.getDate().encode(), (addr[0], port))
