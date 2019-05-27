@@ -7,20 +7,20 @@ from time import time
 class Clock:
 
     def __init__(self):
-        self._error = randint(0, 29) * 1000
+        self.__error = randint(0, 29) * 1000
 
     def getClock(self):
-        return (self._current_milli_time() + self._error)
+        return (self.__current_milli_time() + self.__error)
 
     def adjustClock(self, a):
-        self._error += a
-        
+        self.__error += a
+
     def getError(self):
-        return self._error
+        return self.__error
 
     def getDate(self):
-        current_milli_time_error = self._current_milli_time() + self._error
-        return datetime.utcfromtimestamp(current_milli_time_error // 1000).replace(microsecond=current_milli_time_error % 1000 * 1000).strftime("%c")
+        current_milli_time__error = self.__current_milli_time() + self.__error
+        return datetime.utcfromtimestamp(current_milli_time__error // 1000).replace(microsecond=current_milli_time__error % 1000 * 1000).strftime("%c")
 
-    def _current_milli_time(self):
+    def __current_milli_time(self):
         return (round(time() * 1000))

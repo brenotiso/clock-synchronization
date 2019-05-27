@@ -13,7 +13,7 @@ sock.bind((udp_ip, udp_port))
 while True:
     # Recebe a porta que o slave enviará seu clock
     mensage, addr = sock.recvfrom(1024)
-    print ("Mensagem recebida:", mensage.decode())
+    print("Mensagem recebida:", mensage.decode())
     port = int(mensage.decode())
     # Envia o clock para o master
     sock.sendto((str(r.getClock())).encode(), (addr[0], port))

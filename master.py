@@ -5,18 +5,14 @@ import time
 import statistics
 
 
-
-SLAVES = ['127.0.0.1']  # adicionar os IPs dos slaves
+SLAVES = ['192.168.103.16', '192.168.103.18']
 INITIAL_PORT = 7101
 
-ports = []
-times = []
-mean_time = 0
 local_clock = Clock()
 sock_udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-sock_udp.settimeout(1)
 
 
+# Obtem o tempo dos slaves para realizar a média
 class GetTime(threading.Thread):
     def __init__(self, index):
         threading.Thread.__init__(self)
@@ -25,54 +21,93 @@ class GetTime(threading.Thread):
     def run(self):
         try:
             request_time = time.time()
-            sock_udp.sendto("ola".encode(), (SLAVES[0], 7101))
-            response = sock_udp.recvfrom(1024)  
+            sock_udp.sendto(str(ports[self.i]).encode(), (SLAVES[self.i], 7101))
+
+            sock_udp_response = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            sock_udp_response.bind(('', ports[self.i]))
+
+            response = sock_udp_response.recvfrom(1024)
             response_time = time.time()
-            times[self.i] = float(response[0].decode()) + ((response_time - request_time) / 2)
-            
-            
+            # O tempo é armazenado já com a compensação do atraso
+            times[self.i] = int(response[0].decode()) + (int(response_time - request_time) // 2)
+
+            sockets_response.append(sock_udp_response)
         except socket.timeout:
             print('Time out {}'.format(SLAVES[self.i]))
 
 
-class SendTime(threading.Thread):
+# Obtem o tempo dos slaves
+class GetResults(threading.Thread):
     def __init__(self, index):
         threading.Thread.__init__(self)
         self.i = index
 
     def run(self):
-        adjust_time = mean_time - times[self.i]
-        sock_udp.sendto(str(adjust_time).encode(), (SLAVES[self.i], 7101))
+        result = sockets_response[self.i].recvfrom(1024)
+        results.append(result[0].decode())
 
-for index, slave in enumerate(SLAVES):
-    port = str(INITIAL_PORT + index)
-    ports.append(port)
-    times.append(0)
 
-threads = []
-for index, slave in enumerate(SLAVES):
-    threads.append(GetTime(index))
+def main():
+    while True:
+        sockets_response = []
+        ports = []
+        times = []
+        results = []
 
-for thread in threads:
-    thread.start()
+        # Defini as portas que serão utilizadas
+        for index, slave in enumerate(SLAVES):
+            port = INITIAL_PORT + index
+            ports.append(port)
+            times.append(0)
 
-for thread in threads:
-    thread.join()
+        # Coleta dos tempo dos slaves
+        threads = []
+        for index, slave in enumerate(SLAVES):
+            threads.append(GetTime(index))
 
-local_time = local_clock.getClock()
-times.append(local_time)
-mean_time = round(statistics.mean(times))
+        for thread in threads:
+            thread.start()
 
-# print('')
-# print(local_time)
-# print(times)
-# print(mean_time)
+        for thread in threads:
+            thread.join()
 
-for index, slave in enumerate(SLAVES):
-    SendTime(index).start()
+        # Adiconando o tempo do master para calcular a média
+        local_time = local_clock.getClock()
+        times.append(local_time)
+        mean_time = round(statistics.mean(times))
 
-local_clock.adjustClock(mean_time - local_time)
-print(local_clock.getClock())
-print(local_clock.getDate())
-# print('')
-# print(local_time)
+        print('')
+        print('Tempo local: ', local_time)
+        print('Tempo dos slaves: ', times)
+        print('Tempo  médio: ', mean_time)
+
+        # Enviando para cada slave o quanto o tempo dele deve ser ajustado
+        for index, slave in enumerate(SLAVES):
+            adjust_time = mean_time - times[index]
+            sock_udp.sendto(str(adjust_time).encode(), (SLAVES[index], 7101))
+
+        local_clock.adjustClock(mean_time - local_time)
+        local_date = local_clock.getDate()
+
+        # Coleta dos resultados
+        threads = []
+        for index, slave in enumerate(SLAVES):
+            threads.append(GetResults(index))
+
+        for thread in threads:
+            thread.start()
+
+        for thread in threads:
+            thread.join()
+
+        # Resultados
+        print('\nResultados:')
+        print('    Master: {},     Data: {}\n'.format('localhost', local_date))
+        for index, slave in enumerate(SLAVES):
+            print('    Salve: {}, Data: {}\n'.format(slave, results[index]))
+
+        print('------------------------------------------------------------')
+        time.sleep(10)
+
+if __name__ == '__main__':
+    main()
