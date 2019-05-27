@@ -6,6 +6,7 @@ import statistics
 
 
 SLAVES = ['192.168.103.16', '192.168.103.18']
+SLAVE_PORT = 7101
 INITIAL_PORT = 7101
 
 local_clock = Clock()
@@ -21,7 +22,7 @@ class GetTime(threading.Thread):
     def run(self):
         try:
             request_time = time.time()
-            sock_udp.sendto(str(ports[self.i]).encode(), (SLAVES[self.i], 7101))
+            sock_udp.sendto(str(ports[self.i]).encode(), (SLAVES[self.i], SLAVE_PORT))
 
             sock_udp_response = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             sock_udp_response.bind(('', ports[self.i]))
@@ -84,7 +85,7 @@ def main():
         # Enviando para cada slave o quanto o tempo dele deve ser ajustado
         for index, slave in enumerate(SLAVES):
             adjust_time = mean_time - times[index]
-            sock_udp.sendto(str(adjust_time).encode(), (SLAVES[index], 7101))
+            sock_udp.sendto(str(adjust_time).encode(), (SLAVES[index], SLAVE_PORT))
 
         local_clock.adjustClock(mean_time - local_time)
         local_date = local_clock.getDate()
